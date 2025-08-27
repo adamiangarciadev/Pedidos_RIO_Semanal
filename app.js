@@ -12,26 +12,31 @@ function cargarPromos(callback) {
     download: true,
     header: true,
     complete: function(results) {
-      PROMOS = results.data.map(row => ({
-        id: row.id,
-        marca: row.marca,
-        nombre: row.nombre,
-        precios: {
-          uno: parseFloat(row.precio_uno) || 0,
-          tres: parseFloat(row.precio_tres) || 0,
-          cantidad: parseFloat(row.precio_cantidad) || 0
-        },
-        talles: row.talles ? row.talles.split("|") : [],
-        items: [
-          {
-            codigo: row.codigo,
-            desc: row.desc,
-            familia: row.familia
-          }
-        ]
-      }));
+      PROMOS = results.data
+        .filter(row => row.id) // filtrar filas vacías
+        .map(row => ({
+          id: row.id,
+          marca: row.marca,
+          nombre: row.nombre,
+          precios: {
+            uno: parseFloat(row.precio_uno) || 0,
+            tres: parseFloat(row.precio_tres) || 0,
+            cantidad: parseFloat(row.precio_cantidad) || 0
+          },
+          talles: row.talles ? row.talles.split("|") : [],
+          items: [
+            {
+              codigo: row.codigo,
+              desc: row.desc,
+              familia: row.familia
+            }
+          ]
+        }));
       console.log("✅ Promos cargadas:", PROMOS);
       if (callback) callback();
+    },
+    error: function(err) {
+      console.error("❌ Error al leer promos.csv:", err);
     }
   });
 }
@@ -57,7 +62,7 @@ function renderPedido() {
 
   let html = `
 <pre>
-LOCAL: ${document.getElementById("selectSucursal")?.value || "No seleccionado"}
+LOCAL: ${document.getElementById("sucursal")?.value || "No seleccionado"}
 PEDIDO SEMANAL DE ${fecha}
 
 ART        DESCRIPCIÓN           TALLE   CANTIDAD
@@ -77,11 +82,10 @@ ART        DESCRIPCIÓN           TALLE   CANTIDAD
 // Inicializar
 // =============================
 
-// Esperar a que cargue el DOM
 document.addEventListener("DOMContentLoaded", () => {
   // Cargar promos desde el CSV
   cargarPromos(() => {
-    // acá podrías rellenar selects de promos/artículos en la UI
+    // Ejemplo: podrías rellenar <datalist id="promosList"> con PROMOS
   });
 
   // Botón “Agregar a la lista”
@@ -123,5 +127,43 @@ document.addEventListener("DOMContentLoaded", () => {
         cantidad: cant
       });
     });
+  });
+
+  // Botón “Exportar PDF”
+  document.getElementById("btnPDF")?.addEventListener("click", () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const local = document.getElementById("sucursal")?.value || "No seleccionado";
+    const fecha = new Date().toLocaleDateString("es-AR");
+
+    doc.setFontSize(16);
+    doc.text("Henko Lencería – Pedido Semanal", 14, 20);
+    doc.setFontSize(12);
+    doc.text(`Local: ${local}`, 14, 30);
+    doc.text(`Fecha: ${fecha}`, 14, 38);
+
+    const rows = pedido.map(item => [
+      item.codigo,
+      item.desc,
+      item.talle,
+      item.cantidad
+    ]);
+
+    doc.autoTable({
+      head: [["ART", "DESCRIPCIÓN", "TALLE", "CANTIDAD"]],
+      body: rows,
+      startY: 50,
+      styles: { fontSize: 10, halign: "center" },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: "center" },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 80, halign: "left" },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 25 }
+      }
+    });
+
+    doc.save(`Pedido_${local}_${fecha}.pdf`);
   });
 });
