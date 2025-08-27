@@ -383,6 +383,9 @@ function exportarPDF(){
   doc.save(`Pedido_${$("#sucursalSelect")?.value||"sin-sucursal"}_${toLocalDateStr()}.pdf`);
 }
 
+/* ===== Persistencia ===== */
+function guardarLS(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(pedido)); }catch{} }
+function cargarLS(){ try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const arr=JSON.parse(raw); if(Array.isArray(arr)) pedido=arr; } }catch{} }
 
 /* ===== Init ===== */
 document.addEventListener("DOMContentLoaded", ()=>{
