@@ -2,125 +2,144 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
+  <title>Pedido Semanal · Río / Henko</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pedido a Proveedores – Demo</title>
-  <link rel="stylesheet" href="styles.css">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Librerías (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <div class="wrap">
 
-    <!-- DATOS DEL PEDIDO -->
-    <div class="card" style="margin-bottom:14px">
-      <h1>Datos del pedido</h1>
-      <div class="row" style="align-items:flex-end">
-        <div style="min-width:220px;flex:0 0 260px">
-          <label class="small">Sucursal</label>
-          <select id="sucursal">
-            <option>MORENO</option>
-            <option>NAZCA</option>
-            <option>AVELLANEDA 2</option>
-            <option>CORRIENTES2</option>
-            <option>LAMARCA</option>
-            <option>CASTELLI</option>
-            <option>CORRIENTES</option>
-            <option>QUILMES</option>
-            <option>SARMIENTO</option>
-          </select>
-        </div>
-        <div class="search">
-          <label class="small">Buscar promoción o artículo</label>
-          <input id="search" type="text" placeholder="Ej: BOXER, 03-3200, KAURY, SIGRY…" list="promosList"/>
+  <header class="topbar">
+    <div class="brand">
+      <strong>Pedido Semanal</strong>
+      <span class="muted">· Gestión de promos</span>
+    </div>
+    <div class="meta">
+      <label>
+        Sucursal
+        <input id="sucursal" type="text" placeholder="Nazca / Avellaneda / Corrientes…" />
+      </label>
+      <div class="kpi">
+        <span class="tag">Ítems:</span>
+        <strong id="count">0</strong>
+      </div>
+      <button id="btnPDF" class="btn primary">Exportar PDF</button>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Alertas / toasts simples -->
+    <div id="alerta" class="alert" style="display:none;"></div>
+
+    <!-- Selección de promo -->
+    <section class="card">
+      <h2>1) Elegí una promoción</h2>
+      <div class="grid g2">
+        <label>
+          Buscar promo
+          <input id="promoSearch" list="promosList" type="text" placeholder="ID o 'Marca - Nombre'…" />
           <datalist id="promosList"></datalist>
-        </div>
-      </div>
-      <div class="chips" id="chips" style="margin-top:12px"></div>
-    </div>
-
-    <!-- PROMO ACTUAL -->
-    <div class="card">
-      <div class="section-title">PROMO seleccionada: <span id="promo-title" class="muted"></span></div>
-      <div class="grid">
-        <!-- izquierda -->
+        </label>
         <div>
-          <div class="list" id="artList">
-            <div class="head">
-              <div style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="artAll"> Todos</div>
-              <div>Artículos</div>
-              <div class="muted">Familia</div>
-            </div>
-            <!-- filas dinámicas -->
-          </div>
+          <small class="muted">Seleccionada</small>
+          <div class="pill big" id="pm">—</div>
+        </div>
+      </div>
+    </section>
 
-          <div style="margin-top:12px">
-            <label class="small">Talles</label>
-            <div class="row" style="align-items:center">
-              <div class="talles" id="talles"></div>
-              <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="talleAll"> Todos</label>
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:12px;align-items:end">
-            <div style="max-width:140px">
-              <label class="small">Cantidad</label>
-              <input id="qty" type="number" min="1" value="1" />
-            </div>
-            <button class="btn primary" id="addBtn">➕ Agregar a la lista</button>
-            <button class="btn" id="clearSel">Limpiar selección</button>
+    <!-- Artículos y talles -->
+    <section class="grid g2">
+      <!-- Artículos -->
+      <div class="card">
+        <div class="row space-between center">
+          <h2>2) Artículos</h2>
+          <div class="row center gap">
+            <label class="switch">
+              <input id="artAll" type="checkbox" />
+              <span>Todos</span>
+            </label>
+            <button id="clearSel" class="btn ghost">Limpiar selección</button>
           </div>
         </div>
 
-        <!-- derecha -->
-        <div>
-          <div class="right-card">
-            <div class="small" style="font-weight:700;margin-bottom:6px">Referencia de precios (informativo)</div>
-            <div class="kpis">
-              <div class="kpi">1 por <div class="num" id="p1">$ —</div></div>
-              <div class="kpi">3 por (c/u) <div class="num" id="p3">$ —</div></div>
-              <div class="kpi">por cantidad (c/u) <div class="num" id="pc">$ —</div></div>
-              <div class="kpi">Promo <div class="num" id="pm">—</div></div>
-            </div>
-            <div class="note" style="margin-top:10px">* Próximo paso: cargar automáticamente todas las promos desde tus PDFs o un JSON. También podemos limitar talles por artículo si tenés la grilla exacta.</div>
-          </div>
+        <div id="artList" class="list scroll">
+          <!-- checkboxes de artículos se generan acá -->
+        </div>
 
-          <div class="right-card" style="margin-top:12px">
-            <div style="font-weight:700;margin-bottom:6px">Cómo funciona</div>
-            <ol class="note" style="margin:0;padding-left:18px">
-              <li>Elegí la <b>sucursal</b>.</li>
-              <li>Buscá y seleccioná la <b>promoción</b>.</li>
-              <li>Elegí <b>artículos</b> o activá <b>Todos</b>.</li>
-              <li>Elegí <b>talles</b> o activá <b>Todos</b>.</li>
-              <li>Indicá <b>cantidad</b> y presioná <b>Agregar</b>.</li>
-            </ol>
-          </div>
+        <div class="kpis">
+          <span class="tag">Seleccionados:</span>
+          <strong id="cm">0</strong>
         </div>
       </div>
-    </div>
 
-    <div class="acciones">
-      <input type="number" id="cantidad" value="1" min="1" />
-      <button id="btnAgregar" class="btn">Agregar a la lista</button>
-      <button id="btnSurtido" class="btn btn-secondary">Pedir surtido</button>
-    </div>
+      <!-- Talles -->
+      <div class="card">
+        <div class="row space-between center">
+          <h2>3) Talles</h2>
+          <label class="switch">
+            <input id="talleAll" type="checkbox" />
+            <span>Todos</span>
+          </label>
+        </div>
 
-    <!-- LISTA DEL PEDIDO -->
-    <div class="card" style="margin-top:14px">
-      <div class="section-title">Lista del pedido (<span id="count">0</span>)</div>
-      <div id="pedidoWrap"></div>
-      <div class="footer-actions" style="margin-top:10px">
-        <button class="btn" id="vaciar">Vaciar</button>
-        <button class="btn" id="copiar">Copiar</button>
-        <button class="btn primary" id="btnPDF">📄 Exportar PDF</button>
+        <div id="talles" class="list scroll">
+          <!-- checkboxes de talles se generan acá -->
+        </div>
+
+        <div class="kpis">
+          <span class="tag">Seleccionados:</span>
+          <strong id="sm">0</strong>
+        </div>
       </div>
-    </div>
+    </section>
 
-  </div>
+    <!-- Cantidades y acciones -->
+    <section class="card">
+      <h2>4) Cantidad y carga</h2>
+      <div class="row wrap gap">
+        <label>
+          Cantidad total / por talle
+          <input id="cantidad" type="number" inputmode="numeric" min="1" placeholder="Ej: 12" />
+        </label>
 
-  <!-- Librerías externas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+        <div class="row gap">
+          <button id="btnAgregar" class="btn success">Agregar</button>
+          <button id="btnSurtido" class="btn">Surtido inteligente</button>
+        </div>
 
-  <!-- Tu lógica -->
-  <script src="app.js"></script>
+        <div class="row gap">
+          <button id="copiar" class="btn ghost">Copiar pedido</button>
+          <button id="vaciar" class="btn danger ghost">Vaciar</button>
+        </div>
+      </div>
+      <p class="help muted">
+        <strong>Agregar</strong> suma la misma cantidad para cada combinación artículo+talle seleccionada. <strong>Surtido</strong>
+        reparte la cantidad total equilibrada entre los talles elegidos (o todos los de la promo si no elegiste ninguno).
+      </p>
+    </section>
+
+    <!-- Vista del pedido -->
+    <section class="card">
+      <h2>5) Pedido</h2>
+      <div id="pedidoWrap" class="table-wrap">
+        <div class="empty">Sin ítems en el pedido.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <small class="muted">Hecho con ❤️ por Damy</small>
+  </footer>
+
+  <!-- Lógica -->
+  <script defer src="app.js"></script>
 </body>
 </html>
