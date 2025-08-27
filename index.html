@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pedido a Proveedores – Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- DATOS DEL PEDIDO -->
+    <div class="card" style="margin-bottom:14px">
+      <h1>Datos del pedido</h1>
+      <div class="row" style="align-items:flex-end">
+        <div style="min-width:220px;flex:0 0 260px">
+          <label class="small">Sucursal</label>
+          <select id="sucursal">
+            <option>M O R E N O</option>
+            <option>N A Z C A</option>
+            <option>A V E L L A N E D A 2</option>
+            <option>C O R R I E N T E S 2</option>
+            <option>O N L I N E</option>
+          </select>
+        </div>
+        <div class="search">
+          <label class="small">Buscar promoción o artículo</label>
+          <input id="search" type="text" placeholder="Ej: BOXER, 03-3200, KAURY, SIGRY…" list="promosList"/>
+          <datalist id="promosList"></datalist>
+        </div>
+      </div>
+
+      <div class="chips" id="chips" style="margin-top:12px"></div>
+    </div>
+
+    <!-- PROMO ACTUAL -->
+    <div class="card">
+      <div class="section-title">PROMO seleccionada: <span id="promo-title" class="muted"></span></div>
+      <div class="grid">
+        <!-- izquierda -->
+        <div>
+          <div class="list" id="artList">
+            <div class="head">
+              <div style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="artAll"> Todos</div>
+              <div>Artículos</div>
+              <div class="muted">Familia</div>
+            </div>
+            <!-- filas dinámicas -->
+          </div>
+
+          <div style="margin-top:12px">
+            <label class="small">Talles</label>
+            <div class="row" style="align-items:center">
+              <div class="talles" id="talles"></div>
+              <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="talleAll"> Todos</label>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px;align-items:end">
+            <div style="max-width:140px">
+              <label class="small">Cantidad</label>
+              <input id="qty" type="number" min="1" value="1" />
+            </div>
+            <button class="btn primary" id="addBtn">➕ Agregar a la lista</button>
+            <button class="btn" id="clearSel">Limpiar selección</button>
+          </div>
+        </div>
+
+        <!-- derecha -->
+        <div>
+          <div class="right-card">
+            <div class="small" style="font-weight:700;margin-bottom:6px">Referencia de precios (informativo)</div>
+            <div class="kpis">
+              <div class="kpi">1 por <div class="num" id="p1">$ —</div></div>
+              <div class="kpi">3 por (c/u) <div class="num" id="p3">$ —</div></div>
+              <div class="kpi">por cantidad (c/u) <div class="num" id="pc">$ —</div></div>
+              <div class="kpi">Promo <div class="num" id="pm">—</div></div>
+            </div>
+            <div class="note" style="margin-top:10px">* Próximo paso: cargar automáticamente todas las promos desde tus PDFs o un JSON. También podemos limitar talles por artículo si tenés la grilla exacta.</div>
+          </div>
+
+          <div class="right-card" style="margin-top:12px">
+            <div style="font-weight:700;margin-bottom:6px">Cómo funciona</div>
+            <ol class="note" style="margin:0;padding-left:18px">
+              <li>Elegí la <b>sucursal</b>.</li>
+              <li>Buscá y seleccioná la <b>promoción</b>.</li>
+              <li>Elegí <b>artículos</b> o activá <b>Todos</b>.</li>
+              <li>Elegí <b>talles</b> o activá <b>Todos</b>.</li>
+              <li>Indicá <b>cantidad</b> y presioná <b>Agregar</b>.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LISTA DEL PEDIDO -->
+    <div class="card" style="margin-top:14px">
+      <div class="section-title">Lista del pedido (<span id="count">0</span>)</div>
+      <div id="pedidoWrap"></div>
+      <div class="footer-actions" style="margin-top:10px">
+        <button class="btn" id="vaciar">Vaciar</button>
+        <button class="btn" id="copiar">Copiar</button>
+        <button class="btn" id="descargar">Descargar TXT</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
