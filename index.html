@@ -16,11 +16,15 @@
         <div style="min-width:220px;flex:0 0 260px">
           <label class="small">Sucursal</label>
           <select id="sucursal">
-            <option>M O R E N O</option>
-            <option>N A Z C A</option>
-            <option>A V E L L A N E D A 2</option>
-            <option>C O R R I E N T E S 2</option>
-            <option>O N L I N E</option>
+            <option>MORENO</option>
+            <option>NAZCA</option>
+            <option>AVELLANEDA 2</option>
+            <option>CORRIENTES2</option>
+            <option>LAMARCA</option>
+            <option>CASTELLI</option>
+            <option>CORRIENTES</option>
+            <option>QUILMES</option>
+            <option>SARMIENTO</option>
           </select>
         </div>
         <div class="search">
@@ -29,7 +33,6 @@
           <datalist id="promosList"></datalist>
         </div>
       </div>
-
       <div class="chips" id="chips" style="margin-top:12px"></div>
     </div>
 
@@ -93,6 +96,12 @@
       </div>
     </div>
 
+    <div class="acciones">
+      <input type="number" id="cantidad" value="1" min="1" />
+      <button id="btnAgregar" class="btn">Agregar a la lista</button>
+      <button id="btnSurtido" class="btn btn-secondary">Pedir surtido</button>
+    </div>
+
     <!-- LISTA DEL PEDIDO -->
     <div class="card" style="margin-top:14px">
       <div class="section-title">Lista del pedido (<span id="count">0</span>)</div>
@@ -100,12 +109,18 @@
       <div class="footer-actions" style="margin-top:10px">
         <button class="btn" id="vaciar">Vaciar</button>
         <button class="btn" id="copiar">Copiar</button>
-        <button class="btn" id="descargar">Descargar TXT</button>
+        <button class="btn primary" id="btnPDF">📄 Exportar PDF</button>
       </div>
     </div>
 
   </div>
 
+  <!-- Librerías externas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Tu lógica -->
   <script src="app.js"></script>
 </body>
 </html>
