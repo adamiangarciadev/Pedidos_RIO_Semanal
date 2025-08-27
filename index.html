@@ -5,10 +5,9 @@
   <title>Pedido Semanal · Río / Henko</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Estilos -->
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- Librerías (CDN) -->
+  <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
@@ -23,7 +22,7 @@
     <div class="meta">
       <label>
         Sucursal
-        <input id="sucursal" type="text" placeholder="Nazca / Avellaneda / Corrientes…" />
+        <select id="sucursalSelect"></select>
       </label>
       <div class="kpi">
         <span class="tag">Ítems:</span>
@@ -33,113 +32,62 @@
     </div>
   </header>
 
-  <main class="container">
+  <main class="container two-cols">
+    <!-- Columna IZQUIERDA -->
+    <section class="col-left">
+      <div id="alerta" class="alert" style="display:none;"></div>
 
-    <!-- Alertas / toasts simples -->
-    <div id="alerta" class="alert" style="display:none;"></div>
-
-    <!-- Selección de promo -->
-    <section class="card">
-      <h2>1) Elegí una promoción</h2>
-      <div class="grid g2">
+      <!-- Buscador -->
+      <section class="card">
+        <h2>1) Elegí una promoción</h2>
         <label>
           Buscar promo
           <input id="promoSearch" list="promosList" type="text" placeholder="ID o 'Marca - Nombre'…" />
           <datalist id="promosList"></datalist>
         </label>
-        <div>
-          <small class="muted">Seleccionada</small>
-          <div class="pill big" id="pm">—</div>
-        </div>
-      </div>
+      </section>
+
+      <!-- Grid de tarjetas de promociones -->
+      <section id="promosGrid" class="promos-grid card">
+        <div class="empty">Cargando promociones…</div>
+      </section>
     </section>
 
-    <!-- Artículos y talles -->
-    <section class="grid g2">
-      <!-- Artículos -->
-      <div class="card">
+    <!-- Columna DERECHA: pedido sticky -->
+    <aside class="col-right">
+      <section class="card sticky">
         <div class="row space-between center">
-          <h2>2) Artículos</h2>
-          <div class="row center gap">
-            <label class="switch">
-              <input id="artAll" type="checkbox" />
-              <span>Todos</span>
-            </label>
-            <button id="clearSel" class="btn ghost">Limpiar selección</button>
+          <h2>Pedido</h2>
+          <div class="row gap">
+            <button id="copiar" class="btn ghost">Copiar</button>
+            <button id="vaciar" class="btn danger ghost">Vaciar</button>
           </div>
         </div>
-
-        <div id="artList" class="list scroll">
-          <!-- checkboxes de artículos se generan acá -->
+        <div id="pedidoWrap" class="table-wrap">
+          <div class="empty">Sin ítems en el pedido.</div>
         </div>
-
-        <div class="kpis">
-          <span class="tag">Seleccionados:</span>
-          <strong id="cm">0</strong>
-        </div>
-      </div>
-
-      <!-- Talles -->
-      <div class="card">
-        <div class="row space-between center">
-          <h2>3) Talles</h2>
-          <label class="switch">
-            <input id="talleAll" type="checkbox" />
-            <span>Todos</span>
-          </label>
-        </div>
-
-        <div id="talles" class="list scroll">
-          <!-- checkboxes de talles se generan acá -->
-        </div>
-
-        <div class="kpis">
-          <span class="tag">Seleccionados:</span>
-          <strong id="sm">0</strong>
-        </div>
-      </div>
-    </section>
-
-    <!-- Cantidades y acciones -->
-    <section class="card">
-      <h2>4) Cantidad y carga</h2>
-      <div class="row wrap gap">
-        <label>
-          Cantidad total / por talle
-          <input id="cantidad" type="number" inputmode="numeric" min="1" placeholder="Ej: 12" />
-        </label>
-
-        <div class="row gap">
-          <button id="btnAgregar" class="btn success">Agregar</button>
-          <button id="btnSurtido" class="btn">Surtido inteligente</button>
-        </div>
-
-        <div class="row gap">
-          <button id="copiar" class="btn ghost">Copiar pedido</button>
-          <button id="vaciar" class="btn danger ghost">Vaciar</button>
-        </div>
-      </div>
-      <p class="help muted">
-        <strong>Agregar</strong> suma la misma cantidad para cada combinación artículo+talle seleccionada. <strong>Surtido</strong>
-        reparte la cantidad total equilibrada entre los talles elegidos (o todos los de la promo si no elegiste ninguno).
-      </p>
-    </section>
-
-    <!-- Vista del pedido -->
-    <section class="card">
-      <h2>5) Pedido</h2>
-      <div id="pedidoWrap" class="table-wrap">
-        <div class="empty">Sin ítems en el pedido.</div>
-      </div>
-    </section>
-
+      </section>
+    </aside>
   </main>
+
+  <!-- Drawer lateral de Talles (aparece al expandir tarjeta) -->
+  <aside id="tallesDrawer" class="talles-drawer" aria-hidden="true">
+    <!-- Se rellena por JS -->
+    <div class="drawer-content">
+      <div class="drawer-head">
+        <h3>Talles</h3>
+        <button class="btn ghost drawer-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="drawer-body">
+        <div class="empty">Elegí una promo para ver talles</div>
+      </div>
+    </div>
+  </aside>
 
   <footer class="footer">
     <small class="muted">Hecho con ❤️ por Damy</small>
   </footer>
 
-  <!-- Lógica -->
   <script defer src="app.js"></script>
 </body>
 </html>

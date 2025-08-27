@@ -1,486 +1,400 @@
-/* app.js – Pedido a Proveedores (Damy Edition)
+/* app.js — Tarjeta expandible en ancho y alto con selección de Artículos + Talles
    Requiere:
    - PapaParse (CDN)
    - jsPDF + autoTable (CDN)
-   - promos.csv con columnas: id, marca, nombre, codigo, desc, familia, talles, precio_uno, precio_tres, precio_cantidad
+   - promos.csv: id, marca, nombre, codigo, desc, familia, talles, precio_uno, precio_tres, precio_cantidad
 */
 
-//////////////////////////////
-// Estado global
-//////////////////////////////
 let PROMOS = [];
-let promoActual = null;        // { id, marca, nombre, talles[], precios{}, items[] }
-let pedido = [];               // [{codigo, desc, talle, cantidad}]
+let promoActual = null;      // última promo expandida
+let pedido = [];
 
 const LS_KEY = "pedido_v1";
 
-//////////////////////////////
-// Utils
-//////////////////////////////
-const $ = (sel) => document.querySelector(sel);
-const $all = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const SUCURSALES = [
+  "nazca","avellaneda","lamarca","sarmiento","corrientes","corrientes2","castelli","quilmes","moreno"
+];
 
-function parseNumber(n) {
-  if (n == null) return 0;
-  const s = String(n).trim();
-  if (!s) return 0;
-  // Soporta "10.230,50" y "10230.50"
-  const normalized = s.replace(/\./g, "").replace(",", ".");
-  const num = Number(normalized);
-  return Number.isFinite(num) ? num : 0;
+const $  = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+function parseNumber(n){ if(n==null) return 0; const s=String(n).trim(); if(!s) return 0; const x=s.replace(/\./g,"").replace(",","."); const v=Number(x); return Number.isFinite(v)?v:0; }
+function toLocalDateStr(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`;}
+function setText(id, t){ const el=document.getElementById(id); if(el) el.textContent=t; }
+function escapeHtml(str){return String(str).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function unionUnique(a,b){ return Array.from(new Set([...(a||[]),...(b||[])])); }
+
+function alerta(msg){
+  if(msg) console.log("INFO:", msg);
+  const target=$("#alerta"); if(target){ target.textContent=msg; target.style.display="block"; setTimeout(()=>{target.style.display="none";},2300);} else alert(msg);
 }
 
-function toLocalDateStr(d = new Date()) {
-  // YYYY-MM-DD
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+/* ===== Agrupado del pedido por ART+TALLE ===== */
+function agruparPedido(lineas){
+  const map=new Map();
+  for(const p of lineas){
+    const codigo=String(p.codigo||"").trim();
+    const talle=String(p.talle||"").trim();
+    const desc=String(p.desc||"");
+    const key=(codigo+"||"+talle).toLowerCase();
+    const prev=map.get(key);
+    if(!prev) map.set(key,{codigo,desc,talle,cantidad:Number(p.cantidad)||0});
+    else prev.cantidad+=Number(p.cantidad)||0;
+  }
+  return Array.from(map.values()).sort((a,b)=>{
+    const ac=a.codigo.localeCompare(b.codigo,"es",{numeric:true});
+    if(ac!==0) return ac;
+    return String(a.talle).localeCompare(String(b.talle),"es",{numeric:true});
+  });
+}
+const getPedidoAgrupado=()=>agruparPedido(pedido);
+
+/* ===== Sucursal (select) ===== */
+function initSucursalSelect(){
+  const sel=$("#sucursalSelect"); if(!sel) return;
+  sel.innerHTML=SUCURSALES.map(s=>`<option value="${s}">${s}</option>`).join("");
 }
 
-function setText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
-}
-
-function unionUnique(arrA, arrB) {
-  return Array.from(new Set([...(arrA || []), ...(arrB || [])]));
-}
-
-//////////////////////////////
-// Carga + modelado de PROMOS
-//////////////////////////////
-function cargarPromos(callback) {
-  Papa.parse("promos.csv", {
-    download: true,
-    header: true,
-    complete: function (results) {
-      try {
-        const rows = (results.data || []).filter(r => r && r.id && r.codigo);
-        PROMOS = agruparPromos(rows);
+/* ===== Carga CSV y modelado ===== */
+function cargarPromos(){
+  Papa.parse("promos.csv",{
+    download:true, header:true,
+    complete: (res)=>{
+      try{
+        const rows=(res.data||[]).filter(r=>r&&r.id&&r.codigo);
+        PROMOS=agruparPromos(rows);
         rellenarDatalist();
-        if (typeof callback === "function") callback();
-      } catch (e) {
-        console.error("Error procesando CSV:", e);
-        alerta("No se pudo procesar promos.csv");
-      }
+        renderPromosGrid();
+      }catch(e){console.error(e); alerta("No se pudo procesar promos.csv");}
     },
-    error: function (err) {
-      console.error("Error cargando CSV:", err);
-      alerta("No se pudo cargar promos.csv");
-    }
+    error: (err)=>{ console.error(err); alerta("No se pudo cargar promos.csv"); }
   });
 }
 
-function agruparPromos(rows) {
-  const map = new Map();
-  for (const r of rows) {
-    const id = String(r.id || "").trim();
-    if (!id) continue;
+function agruparPromos(rows){
+  const map=new Map();
+  for(const r of rows){
+    const id=String(r.id||"").trim(); if(!id) continue;
+    const talles=String(r.talles||"").split("|").map(t=>t.trim()).filter(Boolean);
+    const precios={ uno:parseNumber(r.precio_uno), tres:parseNumber(r.precio_tres), cantidad:parseNumber(r.precio_cantidad) };
+    const item={ codigo:String(r.codigo||"").trim(), desc:String(r.desc||"").trim(), familia:String(r.familia||"").trim() };
+    if(!item.codigo) continue;
 
-    const talles = String(r.talles || "")
-      .split("|")
-      .map(t => t.trim())
-      .filter(Boolean);
-
-    const precios = {
-      uno: parseNumber(r.precio_uno),
-      tres: parseNumber(r.precio_tres),
-      cantidad: parseNumber(r.precio_cantidad)
-    };
-
-    const item = {
-      codigo: String(r.codigo || "").trim(),
-      desc: String(r.desc || "").trim(),
-      familia: String(r.familia || "").trim()
-    };
-
-    if (!item.codigo) continue;
-
-    if (!map.has(id)) {
-      map.set(id, {
-        id,
-        marca: String(r.marca || "").trim(),
-        nombre: String(r.nombre || "").trim(),
-        talles: talles,
-        precios,
-        items: [item]
-      });
-    } else {
-      const p = map.get(id);
-      p.items.push(item);
-      // Unir talles por si vienen repetidos en filas
-      p.talles = unionUnique(p.talles, talles);
-      // Último precio gana (o podrías hacer promedios si quisieras)
-      p.precios = precios;
+    if(!map.has(id)){
+      map.set(id,{ id, marca:String(r.marca||"").trim(), nombre:String(r.nombre||"").trim(), talles, precios, items:[item] });
+    }else{
+      const p=map.get(id); p.items.push(item); p.talles=unionUnique(p.talles,talles); p.precios=precios;
     }
   }
-
-  // Orden visible
-  const list = Array.from(map.values());
-  list.sort((a, b) => {
-    const A = (a.marca + " " + a.nombre).toLowerCase();
-    const B = (b.marca + " " + b.nombre).toLowerCase();
-    return A.localeCompare(B, "es");
-  });
+  const list=Array.from(map.values());
+  list.sort((a,b)=> (a.marca+" "+a.nombre).toLowerCase().localeCompare((b.marca+" "+b.nombre).toLowerCase(),"es"));
   return list;
 }
 
-//////////////////////////////
-// UI: datalist + selección promo
-//////////////////////////////
-function rellenarDatalist() {
-  const dl = $("#promosList");
-  if (!dl) return;
-  dl.innerHTML = PROMOS.map(p => {
-    const label = `${p.id} - ${p.marca} - ${p.nombre}`;
-    return `<option value="${escapeHtml(label)}"></option>`;
-  }).join("");
+/* ===== Buscador superior ===== */
+function rellenarDatalist(){
+  const dl=$("#promosList"); if(!dl) return;
+  dl.innerHTML = PROMOS.map(p => `<option value="${escapeHtml(`${p.id} - ${p.marca} - ${p.nombre}`)}"></option>`).join("");
+}
+function enlazarBusquedaPromo(){
+  const input=$("#promoSearch"); if(!input) return;
+  input.addEventListener("change", ()=> seleccionarPorTexto(input.value));
+  input.addEventListener("input", ()=> seleccionarPorTexto(input.value,{onlyExact:true}));
+}
+function seleccionarPorTexto(txt,{onlyExact=false}={}){
+  const v=String(txt||"").trim().toLowerCase(); if(!v) return;
+  let p= PROMOS.find(p=>(`${p.id} - ${p.marca} - ${p.nombre}`).toLowerCase()===v)
+       || PROMOS.find(p=>p.id.toLowerCase()===v)
+       || (!onlyExact && PROMOS.find(p=>(`${p.marca} ${p.nombre}`).toLowerCase().includes(v)));
+  if(p) expandirPromoCard(p.id);
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, m => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m]
-  ));
-}
+/* ===== Render de tarjetas de promos (columna IZQ) ===== */
+function renderPromosGrid(){
+  const host=$("#promosGrid");
+  if(!host) return;
+  if(!PROMOS.length){ host.innerHTML=`<div class="empty">No hay promociones.</div>`; return; }
 
-function enlazarBusquedaPromo() {
-  const input = $("#promoSearch") || $("#promo") || $("#promoInput");
-  if (!input) return;
+  const grid=document.createElement("div");
+  grid.className="grid";
 
-  input.addEventListener("change", () => {
-    seleccionarPromoPorTexto(input.value);
-  });
-  input.addEventListener("input", () => {
-    // Para UX: cuando coincida exacto, seleccionar
-    seleccionarPromoPorTexto(input.value, { onlyExact: true });
-  });
-}
+  for(const p of PROMOS){
+    const card=document.createElement("article");
+    card.className="promo-card";
+    card.dataset.pid=p.id;
 
-function seleccionarPromoPorTexto(txt, opts = {}) {
-  const v = String(txt || "").trim().toLowerCase();
-  if (!v) return;
+    card.innerHTML=`
+      <div class="promo-head">
+        <div>
+          <div class="promo-title">${escapeHtml(p.marca)} · ${escapeHtml(p.nombre)}</div>
+          <div class="promo-sub">ID: ${escapeHtml(p.id)}</div>
+          <div class="price-row">
+            <span class="price-chip">x1: ${p.precios.uno ? `$${p.precios.uno}` : "-"}</span>
+            <span class="price-chip">x3: ${p.precios.tres ? `$${p.precios.tres}` : "-"}</span>
+            <span class="price-chip">Por cantidad: ${p.precios.cantidad ? `$${p.precios.cantidad}` : "-"}</span>
+          </div>
+        </div>
+        <div class="promo-actions">
+          <button class="btn success btn-expand">Seleccionar</button>
+        </div>
+      </div>
 
-  let p =
-    PROMOS.find(p => (`${p.id} - ${p.marca} - ${p.nombre}`).toLowerCase() === v) ||
-    PROMOS.find(p => p.id.toLowerCase() === v) ||
-    (!opts.onlyExact && PROMOS.find(p => (`${p.marca} ${p.nombre}`).toLowerCase().includes(v))) ||
-    (!opts.onlyExact && PROMOS.find(p => p.id.toLowerCase().includes(v)));
+      <!-- EXPANSIÓN: Artículos (click-select) + Talles (checkboxes) + cantidad y botones -->
+      <div class="promo-expand">
+        <div class="row gap">
+          <!-- Columna Artículos -->
+          <div class="card inner" style="flex:1; min-width:260px">
+            <div class="row space-between center">
+              <h3 style="margin:0">Artículos</h3>
+              <div class="row gap">
+                <button class="btn ghost btn-todos">Todos</button>
+                <button class="btn ghost btn-clear">Limpiar</button>
+              </div>
+            </div>
+            <div class="list scroll artList"></div>
+            <div class="kpis"><span class="tag">Seleccionados:</span> <strong class="cm">0</strong></div>
+          </div>
 
-  if (p) {
-    promoActual = p;
-    setText("pm", `${p.marca} – ${p.nombre}`);
-    renderArticulos(p);
-    renderTalles(p);
-    // Reset contadores selección
-    setText("cm", "0");
-    setText("sm", "0");
+          <!-- Columna Talles -->
+          <div class="card inner" style="flex:1; min-width:220px">
+            <div class="row space-between center">
+              <h3 style="margin:0">Talles</h3>
+              <div class="row gap">
+                <button class="btn ghost btn-talles-todos">Todos</button>
+                <button class="btn ghost btn-talles-clear">Limpiar</button>
+              </div>
+            </div>
+            <div class="list scroll tallesList"></div>
+            <div class="kpis"><span class="tag">Seleccionados:</span> <strong class="sm">0</strong></div>
+          </div>
+        </div>
+
+        <div class="row gap" style="margin-top:10px">
+          <label style="min-width:160px">
+            Cantidad total / por talle
+            <input type="number" class="cantidad" inputmode="numeric" min="1" placeholder="Ej: 12" />
+          </label>
+          <button class="btn success btn-add">Agregar</button>
+          <button class="btn btn-surtido">Surtido inteligente</button>
+        </div>
+      </div>
+    `;
+
+    $(".btn-expand", card).addEventListener("click", ()=> expandirPromoCard(p.id));
+    $(".btn-add", card).addEventListener("click", ()=> agregarDesdeCard(card, p, {modo:"normal"}));
+    $(".btn-surtido", card).addEventListener("click", ()=> agregarDesdeCard(card, p, {modo:"surtido"}));
+    $(".btn-clear", card).addEventListener("click", ()=> limpiarCard(card));
+    $(".btn-todos", card).addEventListener("click", ()=> toggleTodosArticulos(card));
+    $(".btn-talles-clear", card).addEventListener("click", ()=> limpiarTalles(card));
+    $(".btn-talles-todos", card).addEventListener("click", ()=> toggleTodosTalles(card));
+
+    grid.appendChild(card);
   }
+
+  host.innerHTML="";
+  host.appendChild(grid);
 }
 
-//////////////////////////////
-// UI: artículos y talles
-//////////////////////////////
-function renderArticulos(promo) {
-  const cont = $("#artList");
-  if (!cont) return;
-  const items = promo?.items || [];
+/* Expandir una tarjeta:
+   - Colapsa el resto
+   - La tarjeta expandida ocupa TODO el ancho del grid (1 / -1)
+   - Renderiza artículos y talles
+*/
+function expandirPromoCard(promoId){
+  const host=$("#promosGrid");
+  const allCards = $$(".promo-card", host);
+
+  // Colapsar todas y resetear grid span
+  allCards.forEach(c=>{
+    c.classList.remove("expanded");
+    c.style.gridColumn = ""; // reset
+  });
+
+  const card=$(`.promo-card[data-pid="${CSS.escape(promoId)}"]`, host);
+  if(!card) return;
+
+  card.classList.add("expanded");
+  // Expandir a lo ANCHO: ocupar toda la fila del grid
+  card.style.gridColumn = "1 / -1";
+
+  const p = PROMOS.find(x=>x.id===promoId);
+  promoActual = p || null;
+
+  renderArticulosEn(card, p);
+  renderTallesEn(card, p);
+
+  $(".cm",card).textContent="0";
+  $(".sm",card).textContent="0";
+
+  // Llevar al inicio de la tarjeta
+  card.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* ===== Artículos (sin checkbox/desc). Click → toggle .selected ===== */
+function renderArticulosEn(card, promo){
+  const cont=$(".artList", card); if(!cont) return;
+  const items = (promo?.items || []).slice();
+
   cont.innerHTML = items.map(it => `
-    <label class="chk">
-      <input type="checkbox" name="art" value="${escapeHtml(it.codigo)}" data-desc="${escapeHtml(it.desc)}">
-      <span>${escapeHtml(it.codigo)} – ${escapeHtml(it.desc || "")}${it.familia ? ` <em>(${escapeHtml(it.familia)})</em>` : ""}</span>
-    </label>
+    <div class="item" data-codigo="${escapeHtml(it.codigo)}" title="${escapeHtml(it.codigo)}">
+      ${escapeHtml(it.codigo)}
+    </div>
   `).join("");
 
-  // Evento para contar seleccionados
-  $all('input[name="art"]', cont).forEach(chk => {
-    chk.addEventListener("change", () => {
-      const c = $all('input[name="art"]:checked', cont).length;
-      setText("cm", String(c || 0));
+  $$(".item", cont).forEach(div=>{
+    div.addEventListener("click", ()=>{
+      div.classList.toggle("selected");
+      $(".cm",card).textContent = String($$(".item.selected", cont).length);
     });
   });
-
-  // “Todos”
-  const allToggle = $("#artAll");
-  if (allToggle) {
-    allToggle.checked = false;
-    allToggle.onchange = () => {
-      const checked = allToggle.checked;
-      $all('input[name="art"]', cont).forEach(chk => {
-        chk.checked = checked;
-      });
-      setText("cm", String(checked ? items.length : 0));
-    };
-  }
-
-  // Limpiar selección
-  const btnClear = $("#clearSel");
-  if (btnClear) {
-    btnClear.onclick = () => {
-      const talles = $("#talles");
-      $all('input[type="checkbox"]', cont).forEach(chk => chk.checked = false);
-      if (talles) $all('input[type="checkbox"]', talles).forEach(chk => chk.checked = false);
-      setText("cm", "0");
-      setText("sm", "0");
-      if ($("#artAll")) $("#artAll").checked = false;
-      if ($("#talleAll")) $("#talleAll").checked = false;
-    };
-  }
+}
+function getCodigosSeleccionados(card){
+  return $$(".item.selected", $(".artList",card)).map(n=>n.dataset.codigo);
+}
+function limpiarCard(card){
+  $$(".item.selected", card).forEach(n=>n.classList.remove("selected"));
+  $(".cantidad",card).value="";
+  $(".cm",card).textContent="0";
+  limpiarTalles(card);
+}
+function toggleTodosArticulos(card){
+  const cont=$(".artList", card);
+  if(!cont) return;
+  const items=$$(".item", cont);
+  const allSelected=items.length && items.every(i=>i.classList.contains("selected"));
+  items.forEach(i=>i.classList.toggle("selected", !allSelected));
+  $(".cm",card).textContent=String($$(".item.selected", cont).length);
 }
 
-function renderTalles(promo) {
-  const cont = $("#talles");
-  if (!cont) return;
-  const list = (promo?.talles || []).slice();
-
-  // Ordenar talles: si son números, por número; si no, alfabético
-  list.sort((a, b) => {
-    const na = Number(a), nb = Number(b);
-    const aN = Number.isFinite(na), bN = Number.isFinite(nb);
-    return aN && bN ? na - nb : String(a).localeCompare(String(b), "es");
+/* ===== Talles (checkboxes con Todos/Limpiar) ===== */
+function renderTallesEn(card, promo){
+  const cont=$(".tallesList", card); if(!cont) return;
+  const list=(promo?.talles||[]).slice().sort((a,b)=>{
+    const na=Number(a), nb=Number(b);
+    return (Number.isFinite(na)&&Number.isFinite(nb)) ? na-nb : String(a).localeCompare(String(b),"es");
   });
 
-  cont.innerHTML = list.map(t => `
+  cont.innerHTML = list.length ? list.map(t => `
     <label class="chk">
-      <input type="checkbox" name="talle" value="${escapeHtml(t)}">
+      <input type="checkbox" name="talleCard" value="${escapeHtml(t)}">
       <span>${escapeHtml(t)}</span>
     </label>
-  `).join("");
+  `).join("") : `<div class="empty">Sin talles cargados</div>`;
 
-  $all('input[name="talle"]', cont).forEach(chk => {
-    chk.addEventListener("change", () => {
-      const c = $all('input[name="talle"]:checked', cont).length;
-      setText("sm", String(c || 0));
+  $$('input[name="talleCard"]', cont).forEach(chk=>{
+    chk.addEventListener("change", ()=>{
+      $(".sm",card).textContent = String($$('input[name="talleCard"]:checked', cont).length);
     });
   });
-
-  const allToggle = $("#talleAll");
-  if (allToggle) {
-    allToggle.checked = false;
-    allToggle.onchange = () => {
-      const checked = allToggle.checked;
-      $all('input[name="talle"]', cont).forEach(chk => {
-        chk.checked = checked;
-      });
-      setText("sm", String(checked ? list.length : 0));
-    };
-  }
+}
+function getTallesSeleccionados(card){
+  return $$('input[name="talleCard"]:checked', card).map(i=>i.value);
+}
+function limpiarTalles(card){
+  $$('input[name="talleCard"]', card).forEach(i=> i.checked=false);
+  const cont=$(".tallesList", card);
+  if(cont) $(".sm",card).textContent = String($$('input[name="talleCard"]:checked', cont).length);
+}
+function toggleTodosTalles(card){
+  const inputs=$$('input[name="talleCard"]', card);
+  const allSelected = inputs.length && inputs.every(i=>i.checked);
+  inputs.forEach(i=> i.checked = !allSelected);
+  const cont=$(".tallesList", card);
+  if(cont) $(".sm",card).textContent = String($$('input[name="talleCard"]:checked', cont).length);
 }
 
-//////////////////////////////
-// Pedido (agregar, surtido, render)
-//////////////////////////////
-function getSeleccionadosArticulos() {
-  const cont = $("#artList");
-  return cont ? $all('input[name="art"]:checked', cont) : [];
-}
+/* ===== Alta al pedido desde la card ===== */
+function agregarDesdeCard(card, p, {modo}){
+  if(!p) return alerta("Elegí una promoción primero.");
+  const codigos = getCodigosSeleccionados(card);
+  const total = parseInt($(".cantidad",card)?.value||"0",10)||0;
+  if(!codigos.length) return alerta("Seleccioná al menos un artículo.");
+  if(total<=0) return alerta("Ingresá una cantidad válida.");
 
-function getSeleccionadosTalles() {
-  const cont = $("#talles");
-  return cont ? $all('input[name="talle"]:checked', cont) : [];
-}
+  // Talles: los tildados; si no hay ninguno, usar todos los de la promo
+  let talles = getTallesSeleccionados(card);
+  if(!talles.length) talles = (p.talles||[]).slice();
+  if(!talles.length) talles.push("ÚNICO");
 
-function agregarNormal() {
-  if (!promoActual) return alerta("Elegí una promoción primero.");
-  const arts = getSeleccionadosArticulos();
-  const talls = getSeleccionadosTalles();
-  const cant = parseInt($("#cantidad")?.value || $("#qty")?.value || "0", 10) || 0;
-
-  if (!arts.length) return alerta("Seleccioná al menos un artículo.");
-  if (!talls.length) return alerta("Seleccioná al menos un talle.");
-  if (cant <= 0) return alerta("Ingresá una cantidad válida.");
-
-  for (const art of arts) {
-    for (const t of talls) {
-      pedido.push({
-        codigo: art.value,
-        desc: art.dataset.desc || "",
-        talle: t.value,
-        cantidad: cant
-      });
+  if(modo==="normal"){
+    // misma cantidad para cada talle
+    for(const codigo of codigos){
+      for(const t of talles){
+        pedido.push({ codigo, desc: "", talle: t, cantidad: total });
+      }
+    }
+  }else{
+    // surtido: distribuir total entre talles
+    const base=Math.floor(total/talles.length); let resto=total%talles.length;
+    const reparto=talles.map(t=>({talle:t, qty: base+(resto-- > 0 ? 1:0)})).filter(r=>r.qty>0);
+    for(const codigo of codigos){
+      for(const r of reparto){
+        pedido.push({ codigo, desc:"", talle:r.talle, cantidad:r.qty });
+      }
     }
   }
+
   renderPedido();
 }
 
-function agregarSurtido() {
-  if (!promoActual) return alerta("Elegí una promoción primero.");
-  const arts = getSeleccionadosArticulos();
-  let talls = getSeleccionadosTalles().map(t => t.value);
-  const total = parseInt($("#cantidad")?.value || $("#qty")?.value || "0", 10) || 0;
+/* ===== Pedido (columna DERECHA) ===== */
+function renderPedido(){
+  const wrap=$("#pedidoWrap"); if(!wrap) return;
+  const agrupado=getPedidoAgrupado();
 
-  if (!arts.length) return alerta("Seleccioná al menos un artículo.");
-  if (!talls.length) talls = (promoActual.talles || []).slice();
-  if (!talls.length) return alerta("No hay talles disponibles.");
-  if (total <= 0) return alerta("Ingresá una cantidad válida.");
-
-  const base = Math.floor(total / talls.length);
-  let resto = total % talls.length;
-
-  const reparto = talls.map(t => ({ talle: t, qty: base + (resto-- > 0 ? 1 : 0) }))
-                       .filter(r => r.qty > 0);
-
-  for (const art of arts) {
-    for (const r of reparto) {
-      pedido.push({
-        codigo: art.value,
-        desc: art.dataset.desc || "",
-        talle: r.talle,
-        cantidad: r.qty
-      });
-    }
+  if(!agrupado.length){
+    wrap.innerHTML=`<div class="empty">Sin ítems en el pedido.</div>`;
+    setText("count","0"); guardarLS(); return;
   }
-  renderPedido();
-}
 
-function renderPedido() {
-  const wrap = $("#pedidoWrap") || $("#pedidoSalida");
-  if (!wrap) return;
-
-  if (!pedido.length) {
-    wrap.innerHTML = `<div class="empty">Sin ítems en el pedido.</div>`;
-    setText("count", "0");
-    guardarLS();
-    return;
-    }
-
-  // Tabla HTML
-  const rows = pedido.map(p => `
+  const rows=agrupado.map(p=>`
     <tr>
       <td>${escapeHtml(p.codigo)}</td>
-      <td>${escapeHtml(p.desc || "")}</td>
+      <td>${escapeHtml(p.desc||"")}</td>
       <td class="talle">${escapeHtml(String(p.talle))}</td>
       <td class="num">${escapeHtml(String(p.cantidad))}</td>
     </tr>
   `).join("");
 
-  wrap.innerHTML = `
-    <table class="tabla">
-      <thead>
-        <tr><th>ART</th><th>DESCRIPCIÓN</th><th>TALLE</th><th>CANT.</th></tr>
-      </thead>
+  wrap.innerHTML=`
+    <table class="table">
+      <thead><tr><th>ART</th><th>DESCRIPCIÓN</th><th>TALLE</th><th>CANT.</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
-
-  setText("count", String(pedido.length));
+  setText("count", String(agrupado.length));
   guardarLS();
 }
 
-//////////////////////////////
-// Portapapeles + PDF
-//////////////////////////////
-async function copiarPedido() {
-  if (!pedido.length) return alerta("No hay nada para copiar.");
-  const lines = pedido.map(p => [p.codigo, p.desc || "", p.talle, p.cantidad].join("\t")).join("\n");
-  try {
-    await navigator.clipboard.writeText(lines);
-    alerta("Pedido copiado al portapapeles.");
-  } catch (e) {
-    console.error(e);
-    alerta("No se pudo copiar (permiso denegado).");
-  }
+/* ===== Copiar & PDF ===== */
+async function copiarPedido(){
+  const agrupado=getPedidoAgrupado(); if(!agrupado.length) return alerta("No hay nada para copiar.");
+  const txt=agrupado.map(p=>[p.codigo,p.desc||"",p.talle,p.cantidad].join("\t")).join("\n");
+  await navigator.clipboard.writeText(txt); alerta("Pedido copiado.");
 }
-
-function exportarPDF() {
-  if (!pedido.length) return alerta("No hay nada para exportar.");
-  const { jsPDF } = window.jspdf || {};
-  if (!jsPDF || !window.jspdf || !window.jspPDF) {
-    // (autoTable cuelga de window.jspdf)
-  }
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-
-  const local = $("#sucursal")?.value || "Sin sucursal";
-  const fecha = toLocalDateStr();
-
+function exportarPDF(){
+  const agrupado=getPedidoAgrupado(); if(!agrupado.length) return alerta("No hay nada para exportar.");
+  const { jsPDF }=window.jspdf; const doc=new jsPDF({unit:"pt",format:"a4"});
   doc.setFontSize(14);
-  doc.text(`LOCAL: ${local}`, 40, 40);
-  doc.text(`PEDIDO SEMANAL – ${fecha}`, 40, 60);
-
-  const body = pedido.map(p => [p.codigo, p.desc || "", String(p.talle), String(p.cantidad)]);
-  doc.autoTable({
-    head: [["ART", "DESCRIPCIÓN", "TALLE", "CANT."]],
-    body,
-    startY: 80,
-    styles: { fontSize: 10, halign: "left" },
-    headStyles: { halign: "center" },
-    columnStyles: {
-      0: { cellWidth: 90 },
-      1: { cellWidth: 300 },
-      2: { cellWidth: 70, halign: "center" },
-      3: { cellWidth: 70, halign: "center" }
-    }
-  });
-
-  doc.save(`Pedido_${local}_${fecha}.pdf`);
+  doc.text(`LOCAL: ${$("#sucursalSelect")?.value||"sin-sucursal"}`,40,40);
+  doc.text(`PEDIDO – ${toLocalDateStr()}`,40,60);
+  doc.autoTable({ head:[["ART","DESCRIPCIÓN","TALLE","CANT."]],
+    body: agrupado.map(p=>[p.codigo,p.desc||"",String(p.talle),String(p.cantidad)]), startY:80 });
+  doc.save(`Pedido_${$("#sucursalSelect")?.value||"sin-sucursal"}_${toLocalDateStr()}.pdf`);
 }
 
-//////////////////////////////
-// Persistencia
-//////////////////////////////
-function guardarLS() {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(pedido));
-  } catch {}
-}
+/* ===== Persistencia ===== */
+function guardarLS(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(pedido)); }catch{} }
+function cargarLS(){ try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const arr=JSON.parse(raw); if(Array.isArray(arr)) pedido=arr; } }catch{} }
 
-function cargarLS() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) {
-        pedido = arr.filter(x => x && x.codigo);
-      }
-    }
-  } catch {}
-}
-
-//////////////////////////////
-// Helpers UI
-//////////////////////////////
-function alerta(msg) {
-  // reemplazá por un toast si querés
-  if (msg) console.log("INFO:", msg);
-  const target = $("#alerta");
-  if (target) {
-    target.textContent = msg;
-    target.style.display = "block";
-    setTimeout(() => { target.style.display = "none"; }, 2500);
-  } else {
-    // fallback
-    alert(msg);
-  }
-}
-
-function enlazarBotones() {
-  $("#btnAgregar") && ($("#btnAgregar").onclick = agregarNormal);
-  $("#addBtn") && ($("#addBtn").onclick = agregarNormal); // alias
-
-  $("#btnSurtido") && ($("#btnSurtido").onclick = agregarSurtido);
-
-  $("#vaciar") && ($("#vaciar").onclick = () => {
-    pedido = [];
-    renderPedido();
-  });
-
-  $("#copiar") && ($("#copiar").onclick = copiarPedido);
-
-  $("#btnPDF") && ($("#btnPDF").onclick = exportarPDF);
-}
-
-//////////////////////////////
-// Init
-//////////////////////////////
-document.addEventListener("DOMContentLoaded", () => {
-  cargarLS();
-  renderPedido();
-  cargarPromos(() => { /* listo para usar */ });
+/* ===== Init ===== */
+document.addEventListener("DOMContentLoaded", ()=>{
+  initSucursalSelect();
+  cargarLS(); renderPedido();
+  cargarPromos();
   enlazarBusquedaPromo();
-  enlazarBotones();
 
-  // KPIs iniciales
-  setText("pm", "—");
-  setText("cm", "0");
-  setText("sm", "0");
+  $("#copiar").onclick=copiarPedido;
+  $("#vaciar").onclick=()=>{ pedido=[]; renderPedido(); };
+  $("#btnPDF").onclick=exportarPDF;
 });
