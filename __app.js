@@ -12,7 +12,7 @@ let pedido = [];
 const LS_KEY = "pedido_v1";
 
 const SUCURSALES = [
-  "NAZCA","AVELLANEDA 2","LAMARCA","SARMIENTO","CORRIENTES","CORRIENTES2","CASTELLI","QUILMES","MORENO"
+  "nazca","avellaneda","lamarca","sarmiento","corrientes","corrientes2","castelli","quilmes","moreno"
 ];
 
 const $  = (sel, root=document) => root.querySelector(sel);
@@ -39,11 +39,7 @@ function agruparPedido(lineas){
     const key=(codigo+"||"+talle).toLowerCase();
     const prev=map.get(key);
     if(!prev) map.set(key,{codigo,desc,talle,cantidad:Number(p.cantidad)||0});
-    else {
-      prev.cantidad+=Number(p.cantidad)||0;
-      // Si la desc estaba vacía y la nueva trae texto, completamos
-      if(!prev.desc && desc) prev.desc = desc;
-    }
+    else prev.cantidad+=Number(p.cantidad)||0;
   }
   return Array.from(map.values()).sort((a,b)=>{
     const ac=a.codigo.localeCompare(b.codigo,"es",{numeric:true});
@@ -81,11 +77,7 @@ function agruparPromos(rows){
     const id=String(r.id||"").trim(); if(!id) continue;
     const talles=String(r.talles||"").split("|").map(t=>t.trim()).filter(Boolean);
     const precios={ uno:parseNumber(r.precio_uno), tres:parseNumber(r.precio_tres), cantidad:parseNumber(r.precio_cantidad) };
-    const item={
-      codigo:String(r.codigo||"").trim(),
-      desc:String(r.desc||"").trim(),
-      familia:String(r.familia||"").trim()
-    };
+    const item={ codigo:String(r.codigo||"").trim(), desc:String(r.desc||"").trim(), familia:String(r.familia||"").trim() };
     if(!item.codigo) continue;
 
     if(!map.has(id)){
@@ -238,19 +230,13 @@ function expandirPromoCard(promoId){
   card.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
-/* Utilidad: obtener metadata del artículo por código dentro de una promo */
-function getItemMeta(promo, codigo){
-  if(!promo) return null;
-  return (promo.items||[]).find(it => String(it.codigo).trim().toLowerCase() === String(codigo).trim().toLowerCase()) || null;
-}
-
 /* ===== Artículos (sin checkbox/desc). Click → toggle .selected ===== */
 function renderArticulosEn(card, promo){
   const cont=$(".artList", card); if(!cont) return;
   const items = (promo?.items || []).slice();
 
   cont.innerHTML = items.map(it => `
-    <div class="item" data-codigo="${escapeHtml(it.codigo)}" title="${escapeHtml(it.codigo + (it.desc ? ' — ' + it.desc : ''))}">
+    <div class="item" data-codigo="${escapeHtml(it.codigo)}" title="${escapeHtml(it.codigo)}">
       ${escapeHtml(it.codigo)}
     </div>
   `).join("");
@@ -333,10 +319,8 @@ function agregarDesdeCard(card, p, {modo}){
   if(modo==="normal"){
     // misma cantidad para cada talle
     for(const codigo of codigos){
-      const meta = getItemMeta(p, codigo);
-      const desc = meta?.desc || "";
       for(const t of talles){
-        pedido.push({ codigo, desc, talle: t, cantidad: total });
+        pedido.push({ codigo, desc: "", talle: t, cantidad: total });
       }
     }
   }else{
@@ -344,10 +328,8 @@ function agregarDesdeCard(card, p, {modo}){
     const base=Math.floor(total/talles.length); let resto=total%talles.length;
     const reparto=talles.map(t=>({talle:t, qty: base+(resto-- > 0 ? 1:0)})).filter(r=>r.qty>0);
     for(const codigo of codigos){
-      const meta = getItemMeta(p, codigo);
-      const desc = meta?.desc || "";
       for(const r of reparto){
-        pedido.push({ codigo, desc, talle:r.talle, cantidad:r.qty });
+        pedido.push({ codigo, desc:"", talle:r.talle, cantidad:r.qty });
       }
     }
   }
