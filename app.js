@@ -41,16 +41,19 @@ function agruparPedido(lineas){
     if(!prev) map.set(key,{codigo,desc,talle,cantidad:Number(p.cantidad)||0});
     else {
       prev.cantidad+=Number(p.cantidad)||0;
-      // Si la desc estaba vacía y la nueva trae texto, completamos
       if(!prev.desc && desc) prev.desc = desc;
     }
   }
+
+  // 🔽 Cambio clave: ordenar por descripción (desc) y luego por talle
   return Array.from(map.values()).sort((a,b)=>{
-    const ac=a.codigo.localeCompare(b.codigo,"es",{numeric:true});
-    if(ac!==0) return ac;
+    const ad = (a.desc||"").toLowerCase();
+    const bd = (b.desc||"").toLowerCase();
+    if(ad !== bd) return ad.localeCompare(bd,"es");
     return String(a.talle).localeCompare(String(b.talle),"es",{numeric:true});
   });
 }
+
 const getPedidoAgrupado=()=>agruparPedido(pedido);
 
 /* ===== Sucursal (select) ===== */
