@@ -105,9 +105,7 @@ function agruparPromos(rows){
 /* ===== Buscador superior ===== */
 function rellenarDatalist(){
   const dl=$("#promosList"); if(!dl) return;
-  const optsPromo = PROMOS.map(p => `<option value="${escapeHtml(`${p.id} - ${p.marca} - ${p.nombre}`)}"></option>`);
-  const optsArt = PROMOS.flatMap(p => (p.items||[]).map(it => `<option value="${escapeHtml(it.codigo)}"></option>`));
-  dl.innerHTML = optsPromo.concat(optsArt).join("");
+  dl.innerHTML = PROMOS.map(p => `<option value="${escapeHtml(`${p.id} - ${p.marca} - ${p.nombre}`)}"></option>`).join("");
 }
 function enlazarBusquedaPromo(){
   const input=$("#promoSearch"); if(!input) return;
@@ -116,42 +114,9 @@ function enlazarBusquedaPromo(){
 }
 function seleccionarPorTexto(txt,{onlyExact=false}={}){
   const v=String(txt||"").trim().toLowerCase(); if(!v) return;
-  // 1) Buscar por ID + Marca + Nombre (exacto), por ID, o por Marca+Nombre (parcial)
-  let p = PROMOS.find(p => (`${p.id} - ${p.marca} - ${p.nombre}`).toLowerCase() === v)
-        || PROMOS.find(p => p.id.toLowerCase() === v)
-        || (!onlyExact && PROMOS.find(p => (`${p.marca} ${p.nombre}`).toLowerCase().includes(v)));
-
-  // 2) Si no hay coincidencia, buscar por ARTÍCULO (código exacto o parcial) o por descripción
-  if(!p){
-    const matchByArt = PROMOS.find(p => (p.items||[]).some(it =>
-      String(it.codigo||"").toLowerCase() === v
-      || (!onlyExact && String(it.codigo||"").toLowerCase().includes(v))
-      || (!onlyExact && String(it.desc||"").toLowerCase().includes(v))
-    ));
-    if(matchByArt) {
-      p = matchByArt;
-      // Expandir y resaltar el artículo coincidente si podemos
-      expandirPromoCard(p.id);
-      try{
-        const card = document.querySelector(`.promo-card[data-pid="${CSS.escape(p.id)}"]`);
-        const cont = card?.querySelector(".artList");
-        if(cont){
-          const item = Array.from(cont.querySelectorAll(".item")).find(n =>
-            (n.dataset.codigo||"").toLowerCase() === v
-            || (!onlyExact && (n.dataset.codigo||"").toLowerCase().includes(v))
-          );
-          if(item){
-            item.classList.add("selected");
-            const cmEl = card.querySelector(".cm");
-            if(cmEl) cmEl.textContent = String(cont.querySelectorAll(".item.selected").length);
-            item.scrollIntoView({behavior:"smooth", block:"center"});
-          }
-        }
-      }catch{}
-      return;
-    }
-  }
-
+  let p= PROMOS.find(p=>(`${p.id} - ${p.marca} - ${p.nombre}`).toLowerCase()===v)
+       || PROMOS.find(p=>p.id.toLowerCase()===v)
+       || (!onlyExact && PROMOS.find(p=>(`${p.marca} ${p.nombre}`).toLowerCase().includes(v)));
   if(p) expandirPromoCard(p.id);
 }
 
