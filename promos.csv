@@ -1,9 +1,9 @@
 id,marca,nombre,codigo,desc,familia,talles,precio_uno,precio_tres,precio_cantidad
 
 
-promo-pack,PACK,PROMO PACK,27-111,Pack Dama,PACK,ÚNICO,4000,4000,4000
-promo-pack,PACK,PROMO PACK,27-112,Pack Nenas,PACK,ÚNICO,4000,4000,4000
-promo-pack,PACK,PROMO PACK,27-113,Pack,PACK,ÚNICO,4000,4000,4000
+promo-pack,AVRIL KAURY,PROMO PACK,27-111,Pack Dama,PACK,ÚNICO,4000,4000,4000
+promo-pack,AVRIL KAURY,PROMO PACK,27-112,Pack Nenas,PACK,ÚNICO,4000,4000,4000
+promo-pack,AVRIL KAURY,PROMO PACK,27-113,Pack,PACK,ÚNICO,4000,4000,4000
 mora-medias-3000,MORA,PROMO MEDIAS MORA,09-2556,Media soquete transparente,Medias,ÚNICO,3000,3000,3000
 mora-medias-3000,MORA,PROMO MEDIAS MORA,09-2519,Media 3/4 fantasía,Medias,ÚNICO,3000,3000,3000
 mora-medias-3000,MORA,PROMO MEDIAS MORA,09-1364,Soquete piqué colores,Medias,ÚNICO,3000,3000,3000
