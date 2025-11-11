@@ -11,16 +11,6 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-
-  <!-- (Opcional) estilos mínimos para los controles nuevos -->
-  <style>
-    .extras { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
-    .chip { display:inline-block; padding:.2rem .5rem; border-radius:999px; font-size:.85rem; background:#f2f2f2; }
-    .chip.on { background:#d6f5d6; }
-    .bolsas-picker { display:none; align-items:center; gap:.6rem; }
-    .bolsas-picker.show { display:flex; }
-    .muted { opacity:.8; }
-  </style>
 </head>
 <body>
 
@@ -38,22 +28,6 @@
         <span class="tag">Ítems:</span>
         <strong id="count">0</strong>
       </div>
-
-      <!-- NUEVO: controles de extras -->
-      <div class="extras">
-        <button id="btnCinta" class="btn">Agregar Cinta</button>
-        <button id="btnBolsas" class="btn">Agregar Bolsas</button>
-        <span id="cintaChip" class="chip muted" title="Estado de cinta">Cinta: no</span>
-        <span id="bolsasChip" class="chip muted" title="Estado de bolsas">Bolsas: —</span>
-      </div>
-
-      <!-- Selector múltiple de bolsas -->
-      <div id="bolsasPicker" class="bolsas-picker">
-        <label class="chk"><input type="checkbox" name="bolsaOpt" value="Chicas"> Chicas</label>
-        <label class="chk"><input type="checkbox" name="bolsaOpt" value="Medianas"> Medianas</label>
-        <label class="chk"><input type="checkbox" name="bolsaOpt" value="Grandes"> Grandes</label>
-      </div>
-
       <button id="btnPDF" class="btn primary">Exportar PDF</button>
     </div>
   </header>
@@ -79,21 +53,21 @@
       </section>
     </section>
 
-    <!-- Columna DERECHA: pedido sticky -->
-    <aside class="col-right">
-      <section id="pedidoPanel" class="card sticky">
-        <div class="row space-between center">
-          <h2>Pedido</h2>
-          <div class="row gap">
-            <button id="copiar" class="btn ghost">Copiar</button>
-            <button id="vaciar" class="btn danger ghost">Vaciar</button>
-          </div>
-        </div>
-        <div id="pedidoWrap" class="table-wrap">
-          <div class="empty">Sin ítems en el pedido.</div>
-        </div>
-      </section>
-    </aside>
+  <!-- Columna DERECHA: pedido sticky -->
+<aside class="col-right">
+  <section id="pedidoPanel" class="card sticky">
+    <div class="row space-between center">
+      <h2>Pedido</h2>
+      <div class="row gap">
+        <button id="copiar" class="btn ghost">Copiar</button>
+        <button id="vaciar" class="btn danger ghost">Vaciar</button>
+      </div>
+    </div>
+    <div id="pedidoWrap" class="table-wrap">
+      <div class="empty">Sin ítems en el pedido.</div>
+    </div>
+  </section>
+</aside>
 
   </main>
 
