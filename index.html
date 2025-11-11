@@ -11,15 +11,13 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-
-  <!-- (Opcional) estilos mínimos para los controles nuevos -->
   <style>
     .extras { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
     .chip { display:inline-block; padding:.2rem .5rem; border-radius:999px; font-size:.85rem; background:#f2f2f2; }
     .chip.on { background:#d6f5d6; }
+    .chip.muted { opacity:.7; }
     .bolsas-picker { display:none; align-items:center; gap:.6rem; }
     .bolsas-picker.show { display:flex; }
-    .muted { opacity:.8; }
   </style>
 </head>
 <body>
@@ -39,15 +37,13 @@
         <strong id="count">0</strong>
       </div>
 
-      <!-- NUEVO: controles de extras -->
+      <!-- NUEVO: controles de extras cerca del botón de PDF -->
       <div class="extras">
         <button id="btnCinta" class="btn">Agregar Cinta</button>
         <button id="btnBolsas" class="btn">Agregar Bolsas</button>
-        <span id="cintaChip" class="chip muted" title="Estado de cinta">Cinta: no</span>
-        <span id="bolsasChip" class="chip muted" title="Estado de bolsas">Bolsas: —</span>
+        <span id="cintaChip" class="chip muted">Cinta: no</span>
+        <span id="bolsasChip" class="chip muted">Bolsas: —</span>
       </div>
-
-      <!-- Selector múltiple de bolsas -->
       <div id="bolsasPicker" class="bolsas-picker">
         <label class="chk"><input type="checkbox" name="bolsaOpt" value="Chicas"> Chicas</label>
         <label class="chk"><input type="checkbox" name="bolsaOpt" value="Medianas"> Medianas</label>
@@ -94,12 +90,10 @@
         </div>
       </section>
     </aside>
-
   </main>
 
   <!-- Drawer lateral de Talles (aparece al expandir tarjeta) -->
   <aside id="tallesDrawer" class="talles-drawer" aria-hidden="true">
-    <!-- Se rellena por JS -->
     <div class="drawer-content">
       <div class="drawer-head">
         <h3>Talles</h3>
