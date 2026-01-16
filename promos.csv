@@ -1,6 +1,13 @@
 id,marca,nombre,codigo,desc,familia,talles,precio_uno,precio_tres,precio_cantidad
 
 
+promo-pack-rio-1,Rio,PROMO PACK RIO 1,1-30211,PROMO PACK RIO 1,Packs,UNICO,2660,3000,
+promo-pack-rio-1,Rio,PROMO PACK RIO 1,1-30212,PROMO PACK RIO 1,Packs,UNICO,2660,3000,
+promo-pack-rio-1,Rio,PROMO PACK RIO 1,1-30213,PROMO PACK RIO 1,Packs,UNICO,2660,3000,
+promo-pack-rio-2,Rio,PROMO PACK RIO 2,1-30215,PROMO PACK RIO 2,Packs,UNICO,2500,3200,
+promo-pack-rio-2,Rio,PROMO PACK RIO 2,1-30216,PROMO PACK RIO 2,Packs,UNICO,2500,3200,
+promo-pack-rio-3,Rio,PROMO PACK RIO 3,1-30210,PROMO PACK RIO 3,Packs,UNICO,2800,3333.34,
+
 
 promo-kaury-mallas-20-15,Kaury,PROMO MALLAS KAURY,29-569,PROMO MALLAS KAURY,Mallas,4|6|8|10,20000,15000,15000
 promo-kaury-mallas-20-15,Kaury,PROMO MALLAS KAURY,29-570,PROMO MALLAS KAURY,Mallas,4|6|8|10,20000,15000,15000
